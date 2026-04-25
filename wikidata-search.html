@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexions Wikidata</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2.5rem 1rem 4rem;
+      color: #222;
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.2rem; color: #1a1a2e; }
+    p.subtitle { font-size: 0.88rem; color: #666; margin-bottom: 1.5rem; }
+
+    .lang-selector {
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.85rem; color: #555;
+    }
+    .lang-selector select {
+      padding: 0.3rem 0.6rem;
+      border: 1px solid #d0d5dd; border-radius: 6px;
+      font-size: 0.85rem; background: #fff; cursor: pointer;
+    }
+
+    /* ── Two-panel grid ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr;
+      gap: 0.75rem;
+      width: 100%; max-width: 820px;
+      align-items: start;
+    }
+
+    .panel-label {
+      font-size: 0.68rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: #3b82f6; margin-bottom: 0.35rem;
+    }
+
+    .connector {
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 1.6rem; font-size: 1.2rem; color: #cbd5e1;
+    }
+
+    /* ── Autocomplete ── */
+    .search-wrapper { position: relative; width: 100%; }
+
+    .search-input {
+      width: 100%;
+      padding: 0.62rem 2.4rem 0.62rem 0.85rem;
+      font-size: 0.92rem;
+      border: 2px solid #d0d5dd; border-radius: 9px;
+      outline: none; background: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+
+    .s-icon {
+      position: absolute; right: 0.75rem; top: 50%;
+      transform: translateY(-50%); color: #aaa; pointer-events: none;
+    }
+    .s-spinner {
+      position: absolute; right: 0.75rem; top: 50%;
+      transform: translateY(-50%);
+      width: 15px; height: 15px;
+      border: 2px solid #ddd; border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    .ac-list {
+      position: absolute; top: calc(100% + 5px); left: 0; right: 0;
+      background: #fff;
+      border: 1px solid #e0e4ea; border-radius: 9px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      max-height: 280px; overflow-y: auto;
+      z-index: 100; display: none;
+    }
+    .ac-list.open { display: block; }
+
+    .ac-item {
+      display: flex; align-items: flex-start; gap: 0.55rem;
+      padding: 0.6rem 0.85rem;
+      cursor: pointer; border-bottom: 1px solid #f0f0f0;
+      transition: background 0.13s;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: #eff6ff; }
+
+    .ac-qid {
+      font-size: 0.62rem; font-weight: 700; color: #fff;
+      background: #3b82f6; padding: 2px 5px; border-radius: 4px;
+      white-space: nowrap; margin-top: 2px; flex-shrink: 0;
+    }
+    .ac-text { flex: 1; min-width: 0; }
+    .ac-label { font-size: 0.88rem; font-weight: 500; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ac-desc  { font-size: 0.73rem; color: #777; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .ac-empty { padding: 0.85rem; color: #999; font-size: 0.85rem; text-align: center; }
+
+    /* ── Mini card ── */
+    .mini-card {
+      margin-top: 0.45rem;
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 9px;
+      padding: 0.7rem 0.9rem; display: none;
+    }
+    .mini-card.visible { display: flex; align-items: center; gap: 0.75rem; }
+    .mini-img {
+      width: 52px; height: 52px; object-fit: cover;
+      border-radius: 6px; flex-shrink: 0;
+      border: 1px solid #e0e4ea;
+      display: none;
+    }
+    .mini-img.loaded { display: block; }
+    .mini-body { flex: 1; min-width: 0; }
+    .mini-header { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.2rem; }
+    .mini-id {
+      font-size: 0.62rem; font-weight: 700; color: #fff;
+      background: #3b82f6; padding: 2px 5px; border-radius: 4px;
+    }
+    .mini-label { font-weight: 600; font-size: 0.9rem; color: #1a1a2e; }
+    .mini-desc  { font-size: 0.76rem; color: #666; }
+
+    /* ── Result card image ── */
+    .rc-img {
+      float: right; margin: 0 0 0.5rem 0.75rem;
+      width: 72px; height: 72px; object-fit: cover;
+      border-radius: 8px; border: 1px solid #e0e4ea;
+    }
+
+    /* ── Depth control ── */
+    .depth-control {
+      margin-top: 1rem;
+      display: flex; align-items: center; gap: 0.65rem;
+      font-size: 0.83rem; color: #555;
+    }
+    .depth-control input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 130px; height: 4px;
+      background: #dbeafe; border-radius: 4px; outline: none; cursor: pointer;
+    }
+    .depth-control input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #3b82f6; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .depth-value {
+      min-width: 18px; text-align: center;
+      font-weight: 700; color: #3b82f6; font-size: 0.9rem;
+    }
+    .depth-hint {
+      font-size: 0.72rem; color: #94a3b8; font-style: italic;
+    }
+
+    /* ── Find button ── */
+    .find-btn {
+      margin-top: 1.25rem;
+      padding: 0.7rem 2rem;
+      background: #3b82f6; color: #fff;
+      font-size: 0.92rem; font-weight: 600;
+      border: none; border-radius: 10px;
+      cursor: pointer; transition: background 0.2s, transform 0.1s;
+    }
+    .find-btn:hover:not(:disabled) { background: #2563eb; }
+    .find-btn:active:not(:disabled) { transform: scale(0.98); }
+    .find-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    /* ── Progress section ── */
+    .progress-section {
+      margin-top: 1.25rem;
+      width: 100%; max-width: 820px;
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: none;
+    }
+    .progress-section.visible { display: block; }
+
+    .progress-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .progress-title {
+      font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #999;
+      display: flex; align-items: center; gap: 0.45rem;
+    }
+    .p-spinner {
+      width: 12px; height: 12px;
+      border: 2px solid #ddd; border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spinInline 0.6s linear infinite;
+    }
+    @keyframes spinInline { to { transform: rotate(360deg); } }
+
+    .found-dots { display: flex; gap: 0.4rem; }
+    .found-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #e5e7eb; border: 2px solid #d1d5db;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .found-dot.lit { background: #22c55e; border-color: #16a34a; }
+
+    .progress-log {
+      font-size: 0.78rem; color: #555;
+      max-height: 180px; overflow-y: auto;
+      line-height: 1.8; border-top: 1px solid #f3f4f6; padding-top: 0.6rem;
+    }
+    .log-found { color: #16a34a; font-weight: 600; }
+    .log-dim   { color: #aaa; }
+    .log-phase { color: #3b82f6; font-weight: 600; }
+    .log-warn  { color: #f59e0b; }
+
+    /* ── Results ── */
+    .results-section {
+      margin-top: 1rem;
+      width: 100%; max-width: 820px;
+      display: none;
+    }
+    .results-section.visible { display: block; }
+    .results-title {
+      font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #999; margin-bottom: 0.75rem;
+    }
+
+    .result-card {
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 11px;
+      padding: 1rem 1.25rem; margin-bottom: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+    .rc-header { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.3rem; }
+    .rc-qid {
+      font-size: 0.68rem; font-weight: 700; color: #fff;
+      background: #22c55e; padding: 2px 7px; border-radius: 5px;
+    }
+    .rc-label { font-weight: 600; font-size: 0.98rem; color: #1a1a2e; }
+    .rc-desc  { font-size: 0.8rem; color: #666; margin-bottom: 0.65rem; }
+
+    .rc-path {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem;
+      font-size: 0.76rem; margin-bottom: 0.5rem;
+    }
+    .path-node {
+      background: #f0f4ff; border: 1px solid #dbeafe;
+      border-radius: 5px; padding: 2px 8px;
+      color: #1d4ed8; text-decoration: none;
+    }
+    .path-node:hover { background: #dbeafe; }
+    .path-node.common { background: #dcfce7; border-color: #86efac; color: #166534; }
+    .path-arrow { color: #94a3b8; }
+
+    .rc-link {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.76rem; color: #3b82f6; text-decoration: none;
+    }
+    .rc-link:hover { text-decoration: underline; }
+
+    /* ── Mode badge ── */
+    .mode-badge {
+      margin-top: 0.9rem;
+      display: none;
+      align-items: center; gap: 0.5rem;
+      background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 8px; padding: 0.45rem 0.9rem;
+      font-size: 0.8rem; color: #92400e;
+    }
+    .mode-badge.visible { display: flex; }
+    .mode-icon { font-size: 1rem; }
+
+    /* ── Influence chain path ── */
+    .path-node.infl-meet { background: #fef3c7; border-color: #fcd34d; color: #92400e; font-weight: 700; }
+    .path-node.infl-from { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .path-node.infl-to   { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+    .infl-edge {
+      display: inline-flex; flex-direction: column; align-items: center;
+      font-size: 0.62rem; color: #78716c; line-height: 1.2; gap: 1px;
+    }
+    .infl-edge .arrow { font-size: 0.9rem; color: #a8a29e; }
+
+    /* result card — influence mode */
+    .result-card.influence { border-left: 3px solid #f59e0b; }
+    .rc-qid.infl-badge { background: #f59e0b; }
+    .results-title-influence { color: #92400e; }
+
+    /* result card — twin-city mode */
+    .result-card.twin { border-left: 3px solid #0891b2; }
+    .rc-qid.twin-badge { background: #0891b2; }
+    .results-title-twin { color: #0e7490; }
+
+    .path-node.twin-meet { background: #ecfeff; border-color: #67e8f9; color: #0e7490; font-weight: 700; }
+    .path-node.twin-from { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .path-node.twin-to   { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+    .twin-edge {
+      display: inline-flex; flex-direction: column; align-items: center;
+      font-size: 0.62rem; color: #0891b2; line-height: 1.2; gap: 1px;
+    }
+    .twin-edge .arrow { font-size: 0.9rem; }
+
+    /* mode badge variants */
+    .mode-badge.city  { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
+
+    /* ── Employer / timeline section ── */
+    .employer-section {
+      margin-top: 1rem;
+      width: 100%; max-width: 820px;
+      display: none;
+    }
+    .employer-section.visible { display: block; }
+    .employer-section-title {
+      font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #999; margin-bottom: 0.75rem;
+    }
+    .emp-card {
+      background: #fff; border: 1px solid #e0e4ea;
+      border-left: 3px solid #8b5cf6;
+      border-radius: 11px; padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      animation: fadeIn 0.3s ease;
+    }
+    .emp-header { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.85rem; flex-wrap: wrap; }
+    .emp-qid   { font-size: 0.68rem; font-weight: 700; color: #fff; background: #8b5cf6; padding: 2px 7px; border-radius: 5px; }
+    .emp-label { font-weight: 600; font-size: 0.95rem; color: #1a1a2e; }
+    .emp-overlap-badge    { font-size: 0.68rem; font-weight: 600; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; padding: 2px 7px; border-radius: 4px; margin-left: auto; }
+    .emp-no-overlap-badge { font-size: 0.68rem; color: #aaa; margin-left: auto; font-style: italic; }
+
+    /* timeline layout */
+    .tl-wrap  { display: flex; align-items: flex-start; }
+    .tl-names { flex-shrink: 0; width: 88px; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
+    .tl-name-cell {
+      height: 18px; font-size: 0.66rem; color: #555;
+      text-align: right; padding-right: 7px;
+      display: flex; align-items: center; justify-content: flex-end;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tl-name-cell.ov { height: 10px; font-size: 0.58rem; color: #92400e; }
+
+    .tl-chart { flex: 1; position: relative; border-left: 2px solid #e5e7eb; padding-left: 1px; }
+    .tl-row   { position: relative; height: 18px; margin-bottom: 3px; background: #f8fafc; border-radius: 3px; }
+    .tl-row.ov-row { height: 10px; background: transparent; }
+    .tl-bar   { position: absolute; height: 100%; border-radius: 3px; min-width: 2px; }
+    .tl-bar.from-bar    { background: rgba(59,130,246,.65); }
+    .tl-bar.to-bar      { background: rgba(16,185,129,.65); }
+    .tl-bar.overlap-bar { background: #fbbf24; border: 1px solid #f59e0b; z-index: 2; }
+    .tl-bar.unknown     { background: repeating-linear-gradient(90deg,#e5e7eb 0,#e5e7eb 5px,transparent 5px,transparent 10px); }
+
+    .tl-axis  { position: relative; height: 18px; margin-top: 3px; border-top: 1px solid #e5e7eb; }
+    .tl-tick  { position: absolute; font-size: 0.59rem; color: #94a3b8; transform: translateX(-50%); top: 3px; white-space: nowrap; }
+
+    .tl-legend { display: flex; gap: 0.75rem; margin-top: 0.6rem; flex-wrap: wrap; font-size: 0.67rem; color: #555; }
+    .tl-legend-item { display: flex; align-items: center; gap: 0.3rem; }
+    .tl-legend-dot  { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    @media (max-width: 600px) {
+      .panels { grid-template-columns: 1fr; }
+      .connector { display: none; }
+    }
+    /* ── Network section ── */
+    .network-section {
+      margin-top: 1rem; width: 100%; max-width: 820px; display: none;
+    }
+    .network-section.visible { display: block; }
+    .network-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .network-title {
+      font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #999;
+    }
+    .network-stats { font-size: 0.72rem; color: #aaa; font-style: italic; }
+    #network-container {
+      width: 100%; height: 480px;
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05); overflow: hidden;
+    }
+    .network-legend {
+      display: flex; gap: 0.75rem; margin-top: 0.5rem; flex-wrap: wrap;
+      font-size: 0.68rem; color: #555;
+    }
+    .network-legend-item { display: flex; align-items: center; gap: 0.3rem; }
+    .network-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .more-note {
+      font-size: 0.78rem; color: #3b82f6; font-style: italic;
+      padding: 0.5rem 0 0; text-align: center;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+
+  <h1>Connexions Wikidata</h1>
+  <p class="subtitle">Trouvez les liens entre deux entités Wikidata</p>
+
+  <div class="lang-selector">
+    <label for="lang-select">Langue :</label>
+    <select id="lang-select">
+      <option value="fr">Français</option>
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="de">Deutsch</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+    </select>
+  </div>
+
+  <!-- ── Two search panels ── -->
+  <div class="panels">
+    <!-- FROM -->
+    <div>
+      <div class="panel-label">De (source)</div>
+      <div class="search-wrapper">
+        <input id="from-input" class="search-input" type="text"
+               placeholder="Entité de départ…" autocomplete="off" />
+        <svg class="s-icon" id="from-icon" xmlns="http://www.w3.org/2000/svg"
+             width="15" height="15" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <div class="s-spinner" id="from-spinner"></div>
+        <ul class="ac-list" id="from-list" role="listbox"></ul>
+      </div>
+      <div class="mini-card" id="from-card">
+        <img class="mini-img" id="from-card-img" alt="" />
+        <div class="mini-body">
+          <div class="mini-header">
+            <span class="mini-id" id="from-card-id"></span>
+            <span class="mini-label" id="from-card-label"></span>
+          </div>
+          <div class="mini-desc" id="from-card-desc"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">⟷</div>
+
+    <!-- TO -->
+    <div>
+      <div class="panel-label">Vers (cible)</div>
+      <div class="search-wrapper">
+        <input id="to-input" class="search-input" type="text"
+               placeholder="Entité d'arrivée…" autocomplete="off" />
+        <svg class="s-icon" id="to-icon" xmlns="http://www.w3.org/2000/svg"
+             width="15" height="15" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <div class="s-spinner" id="to-spinner"></div>
+        <ul class="ac-list" id="to-list" role="listbox"></ul>
+      </div>
+      <div class="mini-card" id="to-card">
+        <img class="mini-img" id="to-card-img" alt="" />
+        <div class="mini-body">
+          <div class="mini-header">
+            <span class="mini-id" id="to-card-id"></span>
+            <span class="mini-label" id="to-card-label"></span>
+          </div>
+          <div class="mini-desc" id="to-card-desc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="depth-control">
+    <label for="depth-input">Profondeur :</label>
+    <input type="range" id="depth-input" min="1" max="10" value="2" />
+    <span class="depth-value" id="depth-value">2</span>
+    <span class="depth-hint" id="depth-hint">(liens directs + 1 saut)</span>
+  </div>
+
+  <button class="find-btn" id="find-btn" disabled>Trouver les connexions</button>
+
+  <div class="mode-badge" id="mode-badge"></div>
+
+  <!-- ── Progress ── -->
+  <div class="progress-section" id="progress-section">
+    <div class="progress-header">
+      <div class="progress-title">
+        <div class="p-spinner" id="p-spinner"></div>
+        Progression
+      </div>
+      <div class="found-dots" id="found-dots">
+        <div class="found-dot" id="dot-0"></div>
+        <div class="found-dot" id="dot-1"></div>
+        <div class="found-dot" id="dot-2"></div>
+      </div>
+    </div>
+    <div class="progress-log" id="progress-log"></div>
+  </div>
+
+  <!-- ── Influence network ── -->
+  <div class="network-section" id="network-section">
+    <div class="network-header">
+      <div class="network-title">Réseau d'influence</div>
+      <div class="network-stats" id="network-stats"></div>
+    </div>
+    <div id="network-container"></div>
+    <div class="network-legend">
+      <div class="network-legend-item"><div class="network-legend-dot" style="background:#3b82f6"></div>Source</div>
+      <div class="network-legend-item"><div class="network-legend-dot" style="background:#22c55e"></div>Cible</div>
+      <div class="network-legend-item"><div class="network-legend-dot" style="background:#f59e0b"></div>Connexion</div>
+      <div class="network-legend-item"><div class="network-legend-dot" style="background:#e9d5ff;border:1px solid #7c3aed"></div>Intermédiaire</div>
+      <div class="network-legend-item" style="margin-left:auto;color:#888">Clic sur un nœud → Wikidata</div>
+    </div>
+  </div>
+
+  <!-- ── Employer timeline ── -->
+  <div class="employer-section" id="employer-section"></div>
+
+  <!-- ── Results ── -->
+  <div class="results-section" id="results-section">
+    <div class="results-title">Items en commun trouvés</div>
+    <div id="results-body"></div>
+  </div>
+
+  <script>
+    // ── State ────────────────────────────────────────────────────────────────
+    const state = { from: null, to: null, searching: false };
+
+    // ── Depth control ────────────────────────────────────────────────────────
+    const depthInput = document.getElementById('depth-input');
+    const depthValue = document.getElementById('depth-value');
+    const depthHint  = document.getElementById('depth-hint');
+
+    const DEPTH_HINTS = {
+      1:  'liens directs uniquement',
+      2:  'liens directs + 1 saut',
+      3:  'jusqu\'à 2 sauts',
+      4:  'jusqu\'à 3 sauts',
+      5:  'exploration large (lent)',
+      6:  'très large (peut être long)',
+      7:  'exploration profonde',
+      8:  'exploration très profonde',
+      9:  'quasi-exhaustif (très lent)',
+      10: 'exhaustif (très lent)',
+    };
+
+    depthInput.addEventListener('input', () => {
+      const v = depthInput.value;
+      depthValue.textContent = v;
+      depthHint.textContent  = `(${DEPTH_HINTS[v] ?? ''})`;
+    });
+
+    function getMaxDepth() { return parseInt(depthInput.value, 10); }
+
+    // ── DOM refs ─────────────────────────────────────────────────────────────
+    const langSel      = document.getElementById('lang-select');
+    const findBtn      = document.getElementById('find-btn');
+    const progressSec  = document.getElementById('progress-section');
+    const progressLog  = document.getElementById('progress-log');
+    const pSpinner     = document.getElementById('p-spinner');
+    const resultsSec   = document.getElementById('results-section');
+    const resultsBody  = document.getElementById('results-body');
+
+    // ── Reusable autocomplete factory ────────────────────────────────────────
+    function makeAutocomplete(inputId, listId, spinnerId, iconId, cardId, onSelect) {
+      const input   = document.getElementById(inputId);
+      const list    = document.getElementById(listId);
+      const spinner = document.getElementById(spinnerId);
+      const icon    = document.getElementById(iconId);
+
+      let timer = null, activeIdx = -1, items = [], ctrl = null;
+
+      function setLoading(on) {
+        spinner.style.display = on ? 'block' : 'none';
+        icon.style.display    = on ? 'none'  : 'block';
+      }
+
+      function close() {
+        list.classList.remove('open');
+        list.innerHTML = '';
+        activeIdx = -1; items = [];
+      }
+
+      function highlight(idx) {
+        list.querySelectorAll('.ac-item').forEach((el, i) =>
+          el.classList.toggle('active', i === idx));
+        activeIdx = idx;
+      }
+
+      async function doSearch(q) {
+        if (ctrl) ctrl.abort();
+        ctrl = new AbortController();
+        const lang = langSel.value;
+        const url  = `https://www.wikidata.org/w/api.php?action=wbsearchentities`
+                   + `&search=${encodeURIComponent(q)}&language=${lang}&uselang=${lang}`
+                   + `&limit=8&format=json&origin=*`;
+        setLoading(true);
+        try {
+          const r    = await fetch(url, { signal: ctrl.signal });
+          const data = await r.json();
+          render(data.search || []);
+        } catch (e) {
+          if (e.name !== 'AbortError') render([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function render(results) {
+        list.innerHTML = ''; items = results; activeIdx = -1;
+        if (!results.length) {
+          list.innerHTML = '<li class="ac-empty">Aucun résultat</li>';
+          list.classList.add('open'); return;
+        }
+        results.forEach((item, idx) => {
+          const li = document.createElement('li');
+          li.className = 'ac-item';
+          li.setAttribute('role', 'option');
+          li.innerHTML = `<span class="ac-qid">${esc(item.id)}</span>
+            <span class="ac-text">
+              <div class="ac-label">${esc(item.label || item.id)}</div>
+              <div class="ac-desc">${esc(item.description || '')}</div>
+            </span>`;
+          li.addEventListener('mousedown', e => { e.preventDefault(); select(idx); });
+          list.appendChild(li);
+        });
+        list.classList.add('open');
+      }
+
+      function select(idx) {
+        const item = items[idx]; if (!item) return;
+        input.value = item.label || item.id;
+        close();
+        showCard(cardId, item);
+        onSelect(item);
+      }
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) { close(); return; }
+        timer = setTimeout(() => doSearch(q), 250);
+      });
+
+      input.addEventListener('keydown', e => {
+        const els = list.querySelectorAll('.ac-item');
+        if (!list.classList.contains('open')) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); highlight(Math.min(activeIdx + 1, els.length - 1)); }
+        else if (e.key === 'ArrowUp')  { e.preventDefault(); highlight(Math.max(activeIdx - 1, 0)); }
+        else if (e.key === 'Enter')    { e.preventDefault(); if (activeIdx >= 0) select(activeIdx); }
+        else if (e.key === 'Escape')   { close(); }
+      });
+
+      document.addEventListener('click', e => {
+        if (!e.target.closest(`#${listId}`) && !e.target.closest(`#${inputId}`)) close();
+      });
+    }
+
+    function showCard(cardId, item) {
+      document.getElementById(cardId + '-id').textContent    = item.id;
+      document.getElementById(cardId + '-label').textContent = item.label || item.id;
+      document.getElementById(cardId + '-desc').textContent  = item.description || '';
+      document.getElementById(cardId).classList.add('visible');
+      // Async image fetch — does not block card display
+      const imgEl = document.getElementById(cardId + '-img');
+      if (imgEl) {
+        imgEl.classList.remove('loaded');
+        getP18Image(item.id).then(url => {
+          if (!url) return;
+          imgEl.src = url;
+          imgEl.onload = () => imgEl.classList.add('loaded');
+        });
+      }
+    }
+
+    // Fetch P18 (image) claim and return a Wikimedia Commons thumbnail URL, or null
+    async function getP18Image(entityId) {
+      try {
+        const url  = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                   + `&ids=${entityId}&props=claims&format=json&origin=*`;
+        const r    = await fetch(url);
+        const data = await r.json();
+        const p18  = data.entities?.[entityId]?.claims?.P18 ?? [];
+        if (!p18.length) return null;
+        const filename = p18[0].mainsnak?.datavalue?.value;
+        if (!filename) return null;
+        const encoded = encodeURIComponent(filename.replace(/ /g, '_'));
+        return `https://commons.wikimedia.org/w/index.php`
+             + `?title=Special:Redirect/file/${encoded}&width=120`;
+      } catch { return null; }
+    }
+
+    // ── Init both autocompletes ───────────────────────────────────────────────
+    makeAutocomplete('from-input', 'from-list', 'from-spinner', 'from-icon', 'from-card', item => {
+      state.from = item;
+      state.mode = null;
+      updateFindBtn();
+      if (state.to) checkEntityMode();
+    });
+
+    makeAutocomplete('to-input', 'to-list', 'to-spinner', 'to-icon', 'to-card', item => {
+      state.to = item;
+      state.mode = null;
+      updateFindBtn();
+      if (state.from) checkEntityMode();
+    });
+
+    function updateFindBtn() {
+      findBtn.disabled = !(state.from && state.to) || state.searching;
+    }
+
+    async function checkEntityMode() {
+      if (!state.from || !state.to) return;
+      const badge = document.getElementById('mode-badge');
+      badge.classList.remove('visible', 'city');
+      badge.innerHTML = '';
+
+      const [[fh, th], [fc, tc]] = await Promise.all([
+        Promise.all([isHuman(state.from.id), isHuman(state.to.id)]),
+        Promise.all([isCity(state.from.id),  isCity(state.to.id)]),
+      ]);
+
+      if (fh && th) {
+        state.mode = 'human';
+        badge.innerHTML = '👤 <span>Deux humains détectés — recherche via <strong>P737 influencé par</strong> activée</span>';
+        badge.classList.add('visible');
+      } else if (fc && tc) {
+        state.mode = 'city';
+        badge.innerHTML = '🏙️ <span>Deux villes détectées — recherche via <strong>P190 jumelage</strong> activée</span>';
+        badge.classList.add('visible', 'city');
+      } else {
+        state.mode = 'general';
+      }
+    }
+
+    // ── Progress helpers ─────────────────────────────────────────────────────
+    let foundCount = 0;
+
+    function initProgress() {
+      foundCount = 0;
+      progressLog.innerHTML = '';
+      progressSec.classList.add('visible');
+      resultsSec.classList.remove('visible');
+      resultsBody.innerHTML = '';
+      const empSec = document.getElementById('employer-section');
+      empSec.classList.remove('visible');
+      empSec.innerHTML = '';
+      const netSec = document.getElementById('network-section');
+      netSec.classList.remove('visible');
+      pSpinner.style.display = 'block';
+      document.getElementById('dot-0').classList.remove('lit');
+      document.getElementById('dot-1').classList.remove('lit');
+      document.getElementById('dot-2').classList.remove('lit');
+    }
+
+    function stopProgress() {
+      pSpinner.style.display = 'none';
+    }
+
+    function log(msg, cls = 'log-info') {
+      const div = document.createElement('div');
+      div.innerHTML = `<span class="${cls}">${msg}</span>`;
+      progressLog.appendChild(div);
+      progressLog.scrollTop = progressLog.scrollHeight;
+    }
+
+    function markFound() {
+      if (foundCount < 3) {
+        document.getElementById(`dot-${foundCount}`).classList.add('lit');
+        foundCount++;
+      }
+    }
+
+    // ── Human detection & influence helpers ─────────────────────────────────
+
+    // Global edge-direction map: "A|B" → 'influenced_by' | 'influenced'
+    // 'influenced_by' : A was influenced by B  (A has P737 = B)
+    // 'influenced'    : A influenced B          (B has P737 = A)
+    const edgeDir = new Map();
+
+    async function isHuman(entityId) {
+      const url = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                + `&ids=${entityId}&props=claims&format=json&origin=*`;
+      const r    = await fetch(url);
+      const data = await r.json();
+      const p31  = data.entities?.[entityId]?.claims?.P31 ?? [];
+      return p31.some(s => s.mainsnak?.datavalue?.value?.id === 'Q5');
+    }
+
+    // Q486972 = human settlement (couvre villes, communes, villages…)
+    async function isCity(entityId) {
+      const sparql = `ASK { wd:${entityId} wdt:P31/wdt:P279* wd:Q486972 }`;
+      const url    = `https://query.wikidata.org/sparql`
+                   + `?query=${encodeURIComponent(sparql)}&format=json`;
+      try {
+        const r    = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } });
+        const data = await r.json();
+        return data.boolean === true;
+      } catch { return false; }
+    }
+
+    // ── P190 (twinned administrative body) helpers ───────────────────────────
+
+    async function getP190Out(entityId) {
+      const url  = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                 + `&ids=${entityId}&props=claims&format=json&origin=*`;
+      const r    = await fetch(url);
+      const data = await r.json();
+      return (data.entities?.[entityId]?.claims?.P190 ?? [])
+        .map(s => s.mainsnak?.datavalue?.value?.id).filter(Boolean);
+    }
+
+    async function getP190In(entityId) {
+      const sparql = `SELECT ?item WHERE { ?item wdt:P190 wd:${entityId} } LIMIT 40`;
+      const url    = `https://query.wikidata.org/sparql`
+                   + `?query=${encodeURIComponent(sparql)}&format=json`;
+      try {
+        const r    = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } });
+        const data = await r.json();
+        return data.results.bindings.map(b => b.item.value.split('/').pop());
+      } catch { return []; }
+    }
+
+    async function getP190Neighbors(entityId) {
+      const [out, inc] = await Promise.all([getP190Out(entityId), getP190In(entityId)]);
+      return [...new Set([...out, ...inc])];
+    }
+
+    // ── Bidirectional BFS via P190 ───────────────────────────────────────────
+    async function findTwinCityConnection(fromId, toId) {
+      const MAX_DEPTH  = getMaxDepth();
+      const MAX_EXPAND = 20;
+      const lang       = langSel.value;
+
+      const fromVisited = new Map([[fromId, [fromId]]]);
+      const toVisited   = new Map([[toId,   [toId]]]);
+      let fromFrontier  = [fromId];
+      let toFrontier    = [toId];
+      const found       = [];
+      const seenMeets   = new Set();
+
+      for (let depth = 1; depth <= MAX_DEPTH && found.length < 3; depth++) {
+        log(`<span class="log-phase">Profondeur ${depth}</span> — jumelages source `
+          + `(${fromFrontier.length} ville(s))…`);
+        const newFrom = [];
+        for (const id of fromFrontier.slice(0, MAX_EXPAND)) {
+          if (found.length >= 3) break;
+          const neighbors = await getP190Neighbors(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.length} jumelage(s) P190`, 'log-dim');
+          for (const nId of neighbors) {
+            if (fromVisited.has(nId)) continue;
+            fromVisited.set(nId, [...fromVisited.get(id), nId]);
+            newFrom.push(nId);
+            if (toVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ meetingPoint: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Ville en commun : <b>${nId}</b>`, 'log-found');
+              markFound();
+              if (found.length >= 3) break;
+            }
+          }
+        }
+        fromFrontier = newFrom;
+
+        if (found.length >= 3) break;
+
+        log(`<span class="log-phase">Profondeur ${depth}</span> — jumelages cible `
+          + `(${toFrontier.length} ville(s))…`);
+        const newTo = [];
+        for (const id of toFrontier.slice(0, MAX_EXPAND)) {
+          if (found.length >= 3) break;
+          const neighbors = await getP190Neighbors(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.length} jumelage(s) P190`, 'log-dim');
+          for (const nId of neighbors) {
+            if (toVisited.has(nId)) continue;
+            toVisited.set(nId, [...toVisited.get(id), nId]);
+            newTo.push(nId);
+            if (fromVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ meetingPoint: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Ville en commun : <b>${nId}</b>`, 'log-found');
+              markFound();
+              if (found.length >= 3) break;
+            }
+          }
+        }
+        toFrontier = newTo;
+      }
+
+      const allIds = new Set([fromId, toId]);
+      found.forEach(f => {
+        f.fromPath.forEach(id => allIds.add(id));
+        f.toPath.forEach(id => allIds.add(id));
+      });
+      const labelMap = await fetchLabels([...allIds], lang);
+      return { found, labelMap };
+    }
+
+    function renderTwinCityResult(item, labelMap, fromId, toId) {
+      const meet     = item.meetingPoint;
+      const fullPath = [...item.fromPath, ...item.toPath.slice(0, -1).reverse()];
+
+      function nodeClass(id) {
+        if (id === meet)   return 'path-node twin-meet';
+        if (id === fromId) return 'path-node twin-from';
+        if (id === toId)   return 'path-node twin-to';
+        return 'path-node';
+      }
+
+      const parts = [];
+      for (let i = 0; i < fullPath.length; i++) {
+        const id  = fullPath[i];
+        const lbl = (labelMap[id] ?? { label: id }).label;
+        parts.push(`<a class="${nodeClass(id)}"
+            href="https://www.wikidata.org/wiki/${id}"
+            target="_blank" rel="noopener" title="${id}">${esc(lbl)}</a>`);
+        if (i < fullPath.length - 1)
+          parts.push(`<span class="twin-edge"><span class="arrow">⇄</span><span>jumelée</span></span>`);
+      }
+
+      const meetInfo = labelMap[meet] ?? { label: meet, desc: '' };
+      const card = document.createElement('div');
+      card.className = 'result-card twin';
+      card.innerHTML = `
+        <div class="rc-header">
+          <span class="rc-qid twin-badge">${esc(meet)}</span>
+          <span class="rc-label">${esc(meetInfo.label)}</span>
+        </div>
+        ${meetInfo.desc ? `<div class="rc-desc">${esc(meetInfo.desc)}</div>` : ''}
+        <div class="rc-path" style="flex-wrap:wrap;gap:.35rem;">${parts.join(' ')}</div>
+        <a class="rc-link" href="https://www.wikidata.org/wiki/${meet}" target="_blank" rel="noopener">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Voir sur Wikidata
+        </a>`;
+      resultsBody.appendChild(card);
+      injectCardImage(card, meet);
+    }
+
+    // Cache pour éviter de re-fetcher les voisins P737 déjà connus
+    const p737Cache = new Map();
+
+    async function getP737Out(entityId) {
+      const key = `out:${entityId}`;
+      if (p737Cache.has(key)) return p737Cache.get(key);
+      const url  = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                 + `&ids=${entityId}&props=claims&format=json&origin=*`;
+      const r    = await fetch(url);
+      const data = await r.json();
+      const ids  = (data.entities?.[entityId]?.claims?.P737 ?? [])
+        .map(s => s.mainsnak?.datavalue?.value?.id).filter(Boolean);
+      ids.forEach(id => edgeDir.set(`${entityId}|${id}`, 'influenced_by'));
+      p737Cache.set(key, ids);
+      return ids;
+    }
+
+    async function getP737In(entityId) {
+      const key = `in:${entityId}`;
+      if (p737Cache.has(key)) return p737Cache.get(key);
+      const sparql = `SELECT ?item WHERE { ?item wdt:P737 wd:${entityId} } LIMIT 50`;
+      const url    = `https://query.wikidata.org/sparql`
+                   + `?query=${encodeURIComponent(sparql)}&format=json`;
+      try {
+        const r    = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } });
+        const data = await r.json();
+        const ids  = data.results.bindings.map(b => b.item.value.split('/').pop());
+        ids.forEach(id => edgeDir.set(`${entityId}|${id}`, 'influenced'));
+        p737Cache.set(key, ids);
+        return ids;
+      } catch { return []; }
+    }
+
+    async function getP737Neighbors(entityId) {
+      const [out, inc] = await Promise.all([getP737Out(entityId), getP737In(entityId)]);
+      return [...new Set([...out, ...inc])];
+    }
+
+    // ── BFS P737 exhaustif ───────────────────────────────────────────────────
+    // Explore tous les niveaux jusqu'à MAX_DEPTH sans s'arrêter aux premières
+    // rencontres. Retourne le graphe complet (nœuds + arêtes) pour le réseau.
+
+    async function findInfluenceConnection(fromId, toId) {
+      const MAX_DEPTH  = getMaxDepth();
+      const MAX_EXPAND = 25;
+      const lang       = langSel.value;
+
+      const fromVisited = new Map([[fromId, [fromId]]]);
+      const toVisited   = new Map([[toId,   [toId]]]);
+      let fromFrontier  = [fromId];
+      let toFrontier    = [toId];
+      const found       = [];
+      const seenMeets   = new Set();
+
+      for (let depth = 1; depth <= MAX_DEPTH; depth++) {
+        if (!fromFrontier.length && !toFrontier.length) break;
+
+        // ── expansion source ──
+        log(`<span class="log-phase">Profondeur ${depth}</span> — source `
+          + `(${fromFrontier.length} nœud(s))…`);
+        const newFrom = [];
+        for (const id of fromFrontier.slice(0, MAX_EXPAND)) {
+          const neighbors = await getP737Neighbors(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.length} voisins`, 'log-dim');
+          for (const nId of neighbors) {
+            if (fromVisited.has(nId)) continue;
+            fromVisited.set(nId, [...fromVisited.get(id), nId]);
+            newFrom.push(nId);
+            if (toVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ meetingPoint: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Connexion : <b>${nId}</b> (total ${found.length})`, 'log-found');
+              markFound();
+            }
+          }
+        }
+        fromFrontier = newFrom;
+
+        // ── expansion cible ──
+        log(`<span class="log-phase">Profondeur ${depth}</span> — cible `
+          + `(${toFrontier.length} nœud(s))…`);
+        const newTo = [];
+        for (const id of toFrontier.slice(0, MAX_EXPAND)) {
+          const neighbors = await getP737Neighbors(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.length} voisins`, 'log-dim');
+          for (const nId of neighbors) {
+            if (toVisited.has(nId)) continue;
+            toVisited.set(nId, [...toVisited.get(id), nId]);
+            newTo.push(nId);
+            if (fromVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ meetingPoint: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Connexion : <b>${nId}</b> (total ${found.length})`, 'log-found');
+              markFound();
+            }
+          }
+        }
+        toFrontier = newTo;
+      }
+
+      // Collecte de tous les nœuds visités + arêtes edgeDir filtrées
+      const allVisited = new Set([...fromVisited.keys(), ...toVisited.keys()]);
+      const edgeSet    = new Set();
+      const graphEdges = [];
+      edgeDir.forEach((dir, key) => {
+        const [a, b] = key.split('|');
+        if (!allVisited.has(a) || !allVisited.has(b)) return;
+        // Convention : arête "influenceur → influencé" (sens de l'influence)
+        const [src, tgt] = dir === 'influenced_by' ? [b, a] : [a, b];
+        const eKey = `${src}|${tgt}`;
+        if (!edgeSet.has(eKey)) { edgeSet.add(eKey); graphEdges.push({ from: src, to: tgt }); }
+      });
+
+      const labelMap = await fetchLabels([...allVisited], lang);
+      return { found, labelMap, fromVisited, toVisited, allVisited, graphEdges };
+    }
+
+    // ── Rendu réseau vis-network ─────────────────────────────────────────────
+    let visNet = null;
+
+    function renderInfluenceNetwork(allVisited, graphEdges, labelMap, fromVisited, toVisited, fromId, toId) {
+      const sec  = document.getElementById('network-section');
+      const stats = document.getElementById('network-stats');
+      sec.classList.add('visible');
+      stats.textContent = `${allVisited.size} personnes · ${graphEdges.length} liens`;
+
+      const meetings = new Set(
+        [...fromVisited.keys()].filter(id => toVisited.has(id) && id !== fromId && id !== toId)
+      );
+
+      const nodes = new vis.DataSet([...allVisited].map(id => {
+        const info = labelMap[id] ?? { label: id, desc: '' };
+        const lbl  = info.label.length > 22 ? info.label.slice(0, 20) + '…' : info.label;
+        let color, size = 18, font = {};
+
+        if (id === fromId) {
+          color = { background: '#3b82f6', border: '#1d4ed8', highlight: { background: '#2563eb', border: '#1e40af' } };
+          size = 30; font = { color: '#fff', bold: true };
+        } else if (id === toId) {
+          color = { background: '#22c55e', border: '#16a34a', highlight: { background: '#16a34a', border: '#15803d' } };
+          size = 30; font = { color: '#fff', bold: true };
+        } else if (meetings.has(id)) {
+          color = { background: '#fbbf24', border: '#d97706', highlight: { background: '#f59e0b', border: '#b45309' } };
+          size = 22;
+        } else {
+          color = { background: '#ede9fe', border: '#7c3aed', highlight: { background: '#ddd6fe', border: '#6d28d9' } };
+        }
+
+        return {
+          id, label: lbl, size, color, font,
+          title: `<b>${esc(info.label)}</b><br><i style="color:#888">${id}</i>${info.desc ? `<br>${esc(info.desc)}` : ''}`,
+        };
+      }));
+
+      const edges = new vis.DataSet(graphEdges.map((e, i) => ({
+        id: i, from: e.from, to: e.to,
+        arrows: 'to',
+        color: { color: '#7c3aed', opacity: 0.5, highlight: '#6d28d9' },
+        width: 1.5,
+      })));
+
+      if (visNet) visNet.destroy();
+      visNet = new vis.Network(
+        document.getElementById('network-container'),
+        { nodes, edges },
+        {
+          nodes: { shape: 'ellipse', font: { size: 11, face: 'Segoe UI, system-ui, sans-serif' }, borderWidth: 2 },
+          edges: {
+            arrows: { to: { enabled: true, scaleFactor: 0.7 } },
+            smooth: { type: 'dynamic' },
+          },
+          physics: {
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: { gravitationalConstant: -60, springLength: 140, springConstant: 0.06, damping: 0.5 },
+            stabilization: { iterations: 250, updateInterval: 30 },
+          },
+          interaction: { hover: true, tooltipDelay: 150, navigationButtons: true, keyboard: true },
+        }
+      );
+      visNet.on('click', p => {
+        if (p.nodes.length === 1) window.open(`https://www.wikidata.org/wiki/${p.nodes[0]}`, '_blank');
+      });
+    }
+
+    // Resolve edge label between two consecutive path nodes
+    function inflEdgeLabel(a, b) {
+      const d = edgeDir.get(`${a}|${b}`) ?? edgeDir.get(`${b}|${a}`);
+      if (!d) return { arrow: '↔', label: 'P737' };
+      // a|b = 'influenced_by'  → a was influenced by b  → b→a direction
+      if (edgeDir.get(`${a}|${b}`) === 'influenced_by') return { arrow: '←', label: 'influencé par' };
+      // a|b = 'influenced'     → a influenced b         → a→b direction
+      if (edgeDir.get(`${a}|${b}`) === 'influenced')    return { arrow: '→', label: 'a influencé' };
+      // reversed lookup
+      if (edgeDir.get(`${b}|${a}`) === 'influenced_by') return { arrow: '→', label: 'a influencé' };
+      if (edgeDir.get(`${b}|${a}`) === 'influenced')    return { arrow: '←', label: 'influencé par' };
+      return { arrow: '↔', label: 'P737' };
+    }
+
+    function renderInfluenceResult(item, labelMap, fromId, toId) {
+      const meet    = item.meetingPoint;
+      // Full path: fromPath + reverse(toPath).slice(1)
+      // fromPath = [fromId, …, meet]
+      // toPath   = [toId,   …, meet]  → reversed = [meet, …, toId]
+      const fullPath = [...item.fromPath, ...item.toPath.slice(0, -1).reverse()];
+
+      function nodeClass(id) {
+        if (id === meet)   return 'path-node infl-meet';
+        if (id === fromId) return 'path-node infl-from';
+        if (id === toId)   return 'path-node infl-to';
+        return 'path-node';
+      }
+
+      const parts = [];
+      for (let i = 0; i < fullPath.length; i++) {
+        const id    = fullPath[i];
+        const lbl   = (labelMap[id] ?? { label: id }).label;
+        parts.push(`<a class="${nodeClass(id)}"
+            href="https://www.wikidata.org/wiki/${id}"
+            target="_blank" rel="noopener" title="${id}">${esc(lbl)}</a>`);
+        if (i < fullPath.length - 1) {
+          const { arrow, label } = inflEdgeLabel(id, fullPath[i + 1]);
+          parts.push(`<span class="infl-edge">
+              <span class="arrow">${arrow}</span>
+              <span>${esc(label)}</span>
+            </span>`);
+        }
+      }
+
+      const meetInfo = labelMap[meet] ?? { label: meet, desc: '' };
+      const card = document.createElement('div');
+      card.className = 'result-card influence';
+      card.innerHTML = `
+        <div class="rc-header">
+          <span class="rc-qid infl-badge">${esc(meet)}</span>
+          <span class="rc-label">${esc(meetInfo.label)}</span>
+        </div>
+        ${meetInfo.desc ? `<div class="rc-desc">${esc(meetInfo.desc)}</div>` : ''}
+        <div class="rc-path" style="flex-wrap:wrap;gap:.35rem;">${parts.join(' ')}</div>
+        <a class="rc-link" href="https://www.wikidata.org/wiki/${meet}" target="_blank" rel="noopener">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Voir sur Wikidata
+        </a>`;
+      resultsBody.appendChild(card);
+      injectCardImage(card, meet);
+    }
+
+    // ── Wikidata helpers ─────────────────────────────────────────────────────
+
+    async function getLinkedItemIds(entityId) {
+      const url = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                + `&ids=${entityId}&props=claims&format=json&origin=*`;
+      const r    = await fetch(url);
+      const data = await r.json();
+      const claims = data.entities?.[entityId]?.claims ?? {};
+      const ids = new Set();
+      for (const stmts of Object.values(claims)) {
+        for (const stmt of stmts) {
+          const dv = stmt.mainsnak?.datavalue;
+          if (dv?.type === 'wikibase-entityid' && dv.value?.['entity-type'] === 'item') {
+            ids.add(dv.value.id);
+          }
+        }
+      }
+      return ids;
+    }
+
+    async function fetchLabels(ids, lang) {
+      const map = {};
+      const CHUNK = 50;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK).join('|');
+        const url   = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                    + `&ids=${chunk}&props=labels|descriptions&languages=${lang}|en&format=json&origin=*`;
+        const r     = await fetch(url);
+        const data  = await r.json();
+        for (const [id, entity] of Object.entries(data.entities ?? {})) {
+          const L = entity.labels ?? {};
+          const D = entity.descriptions ?? {};
+          map[id] = {
+            label: (L[lang] ?? L['en'])?.value ?? id,
+            desc:  (D[lang] ?? D['en'])?.value ?? '',
+          };
+        }
+      }
+      return map;
+    }
+
+    // ── BFS connection finder (bidirectionnel, profondeur configurable) ──────
+    //
+    // Deux frontières progressent depuis FROM et TO en suivant tous les liens
+    // wikibase-item. S'arrête dès que 3 points de rencontre sont trouvés ou
+    // que la profondeur max est atteinte.
+
+    async function findCommonLinks(fromId, toId) {
+      const MAX_DEPTH  = getMaxDepth();
+      const MAX_EXPAND = 30;
+      const lang       = langSel.value;
+
+      const fromVisited = new Map([[fromId, [fromId]]]);
+      const toVisited   = new Map([[toId,   [toId]]]);
+      let fromFrontier  = [fromId];
+      let toFrontier    = [toId];
+      const found       = [];
+      const seenMeets   = new Set();
+
+      for (let depth = 1; depth <= MAX_DEPTH && found.length < 3; depth++) {
+        // ── expansion côté source ──
+        log(`<span class="log-phase">Profondeur ${depth}</span> — source `
+          + `(${fromFrontier.length} nœud(s))…`);
+        const newFrom = [];
+        for (const id of fromFrontier.slice(0, MAX_EXPAND)) {
+          if (found.length >= 3) break;
+          const neighbors = await getLinkedItemIds(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.size} voisins`, 'log-dim');
+          for (const nId of neighbors) {
+            if (fromVisited.has(nId)) continue;
+            fromVisited.set(nId, [...fromVisited.get(id), nId]);
+            newFrom.push(nId);
+            if (toVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ id: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Trouvé : <b>${nId}</b>`, 'log-found');
+              markFound();
+              if (found.length >= 3) break;
+            }
+          }
+        }
+        fromFrontier = newFrom;
+
+        if (found.length >= 3) break;
+
+        // ── expansion côté cible ──
+        log(`<span class="log-phase">Profondeur ${depth}</span> — cible `
+          + `(${toFrontier.length} nœud(s))…`);
+        const newTo = [];
+        for (const id of toFrontier.slice(0, MAX_EXPAND)) {
+          if (found.length >= 3) break;
+          const neighbors = await getLinkedItemIds(id);
+          log(`&nbsp;&nbsp;${id} → ${neighbors.size} voisins`, 'log-dim');
+          for (const nId of neighbors) {
+            if (toVisited.has(nId)) continue;
+            toVisited.set(nId, [...toVisited.get(id), nId]);
+            newTo.push(nId);
+            if (fromVisited.has(nId) && !seenMeets.has(nId)) {
+              seenMeets.add(nId);
+              found.push({ id: nId,
+                           fromPath: fromVisited.get(nId),
+                           toPath:   toVisited.get(nId) });
+              log(`✅ Trouvé : <b>${nId}</b>`, 'log-found');
+              markFound();
+              if (found.length >= 3) break;
+            }
+          }
+        }
+        toFrontier = newTo;
+      }
+
+      const labelMap = await fetchLabels([...allPathIds(found, fromId, toId)], lang);
+      return { found, labelMap };
+    }
+
+    function allPathIds(found, fromId, toId) {
+      const ids = new Set([fromId, toId]);
+      for (const f of found) {
+        f.fromPath.forEach(id => ids.add(id));
+        f.toPath.forEach(id => ids.add(id));
+      }
+      return [...ids];
+    }
+
+    // ── Render results ───────────────────────────────────────────────────────
+    function renderResult(item, labelMap, fromId, toId) {
+      const info = labelMap[item.id] ?? { label: item.id, desc: '' };
+
+      // Build path: fromPath → common ← toPath (reversed)
+      const fromNodes = item.fromPath.slice(0, -1); // exclude common item
+      const toNodes   = item.toPath.slice(0, -1).reverse(); // reverse, exclude common item
+
+      function nodeHtml(id) {
+        const l = (labelMap[id] ?? { label: id }).label;
+        return `<a class="path-node${id === item.id ? ' common' : ''}"
+                   href="https://www.wikidata.org/wiki/${id}"
+                   target="_blank" rel="noopener" title="${id}">${esc(l)}</a>`;
+      }
+
+      const parts = [];
+      fromNodes.forEach(id => { parts.push(nodeHtml(id)); parts.push('<span class="path-arrow">→</span>'); });
+      parts.push(nodeHtml(item.id));
+      toNodes.forEach(id => { parts.push('<span class="path-arrow">←</span>'); parts.push(nodeHtml(id)); });
+
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="rc-header">
+          <span class="rc-qid">${esc(item.id)}</span>
+          <span class="rc-label">${esc(info.label)}</span>
+        </div>
+        ${info.desc ? `<div class="rc-desc">${esc(info.desc)}</div>` : ''}
+        <div class="rc-path">${parts.join(' ')}</div>
+        <a class="rc-link" href="https://www.wikidata.org/wiki/${item.id}" target="_blank" rel="noopener">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Voir sur Wikidata
+        </a>`;
+      resultsBody.appendChild(card);
+      injectCardImage(card, item.id);
+    }
+
+    // Async: fetch P18 for entityId and prepend a float image into card if found
+    function injectCardImage(cardEl, entityId) {
+      getP18Image(entityId).then(url => {
+        if (!url) return;
+        const img = document.createElement('img');
+        img.className = 'rc-img';
+        img.alt = '';
+        img.src = url;
+        // Insert before the header so the float wraps text naturally
+        cardEl.insertBefore(img, cardEl.firstChild);
+      });
+    }
+
+    // ── Employer helpers ─────────────────────────────────────────────────────
+
+    function parseWdYear(timeStr) {
+      if (!timeStr) return null;
+      const m = timeStr.match(/^[+-]?(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    async function getEmployments(entityId) {
+      const url  = `https://www.wikidata.org/w/api.php?action=wbgetentities`
+                 + `&ids=${entityId}&props=claims&format=json&origin=*`;
+      const r    = await fetch(url);
+      const data = await r.json();
+      return (data.entities?.[entityId]?.claims?.P108 ?? []).map(stmt => {
+        const employerId = stmt.mainsnak?.datavalue?.value?.id;
+        if (!employerId) return null;
+        const q = stmt.qualifiers ?? {};
+        return {
+          employerId,
+          startYear: parseWdYear(q.P580?.[0]?.datavalue?.value?.time),
+          endYear:   parseWdYear(q.P582?.[0]?.datavalue?.value?.time),
+        };
+      }).filter(Boolean);
+    }
+
+    function computeOverlaps(fromPeriods, toPeriods) {
+      const now = new Date().getFullYear();
+      const result = [];
+      for (const fp of fromPeriods) {
+        for (const tp of toPeriods) {
+          if (!fp.startYear && !fp.endYear && !tp.startYear && !tp.endYear) {
+            result.push({ startYear: null, endYear: null, possible: true }); continue;
+          }
+          const fs = fp.startYear ?? (tp.startYear ? tp.startYear - 30 : now - 30);
+          const fe = fp.endYear   ?? now;
+          const ts = tp.startYear ?? (fp.startYear ? fp.startYear - 30 : now - 30);
+          const te = tp.endYear   ?? now;
+          const os = Math.max(fs, ts), oe = Math.min(fe, te);
+          if (os <= oe)
+            result.push({ startYear: (fp.startYear || tp.startYear) ? os : null,
+                          endYear:   (fp.endYear   || tp.endYear)   ? oe : null,
+                          possible: false });
+        }
+      }
+      return result;
+    }
+
+    async function findCommonEmployers(fromId, toId) {
+      log('🏢 Recherche des employeurs communs (P108)…');
+      const [fromEmps, toEmps] = await Promise.all([
+        getEmployments(fromId), getEmployments(toId),
+      ]);
+      log(`→ ${fromEmps.length} emploi(s) pour ${fromId}, ${toEmps.length} pour ${toId}`, 'log-dim');
+
+      const toByEmp = new Map();
+      toEmps.forEach(e => { (toByEmp.get(e.employerId) ?? toByEmp.set(e.employerId, []).get(e.employerId)).push(e); });
+
+      const common = []; const seen = new Set();
+      for (const fe of fromEmps) {
+        if (seen.has(fe.employerId) || !toByEmp.has(fe.employerId)) continue;
+        seen.add(fe.employerId);
+        const fp = fromEmps.filter(e => e.employerId === fe.employerId);
+        const tp = toEmps.filter(e => e.employerId === fe.employerId);
+        common.push({ employerId: fe.employerId, fromPeriods: fp, toPeriods: tp,
+                      overlaps: computeOverlaps(fp, tp) });
+      }
+
+      const lang = langSel.value;
+      const labelMap = common.length
+        ? await fetchLabels(common.map(c => c.employerId), lang)
+        : {};
+
+      if (common.length)
+        log(`✅ ${common.length} employeur(s) commun(s).`, 'log-found');
+      else
+        log('→ Aucun employeur commun trouvé.', 'log-dim');
+
+      return { common, labelMap };
+    }
+
+    // ── Timeline rendering ────────────────────────────────────────────────────
+
+    function niceInterval(span) {
+      return [1,2,5,10,20,25,50,100,200].find(i => i >= span / 5) ?? 100;
+    }
+
+    function buildTimeline(chartEl, emp, minYear, maxYear) {
+      const now  = new Date().getFullYear();
+      const span = Math.max(maxYear - minYear, 1);
+
+      function barDiv(cls, s, e, title) {
+        const l = Math.max(0, (s - minYear) / span * 100);
+        const w = Math.max(0.5, Math.min(100 - l, (e - s) / span * 100));
+        return `<div class="tl-bar ${cls}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%" title="${title}"></div>`;
+      }
+
+      function rowHtml(periods, cls) {
+        return periods.map(p => {
+          if (!p.startYear && !p.endYear)
+            return `<div class="tl-bar ${cls} unknown" style="left:0%;width:100%" title="Dates inconnues"></div>`;
+          return barDiv(cls, p.startYear ?? minYear, p.endYear ?? now,
+                        `${p.startYear ?? '?'} – ${p.endYear ?? 'présent'}`);
+        }).join('');
+      }
+
+      // 3 rows: FROM, overlap, TO
+      ['from-row','ov-row','to-row'].forEach((rc, i) => {
+        const row = document.createElement('div');
+        row.className = `tl-row ${rc === 'ov-row' ? 'ov-row' : ''}`;
+        if (i === 0) row.innerHTML = rowHtml(emp.fromPeriods, 'from-bar');
+        if (i === 2) row.innerHTML = rowHtml(emp.toPeriods,   'to-bar');
+        if (i === 1) {
+          row.innerHTML = emp.overlaps.filter(o => !o.possible && (o.startYear || o.endYear))
+            .map(o => barDiv('overlap-bar', o.startYear ?? minYear, o.endYear ?? now,
+                             `Commun : ${o.startYear ?? '?'} – ${o.endYear ?? 'présent'}`))
+            .join('');
+        }
+        chartEl.appendChild(row);
+      });
+
+      // Axis ticks
+      const axis = document.createElement('div');
+      axis.className = 'tl-axis';
+      const step = niceInterval(span);
+      for (let y = Math.ceil(minYear / step) * step; y <= maxYear; y += step) {
+        const tick = document.createElement('span');
+        tick.className = 'tl-tick';
+        tick.style.left = `${((y - minYear) / span * 100).toFixed(2)}%`;
+        tick.textContent = y;
+        axis.appendChild(tick);
+      }
+      chartEl.appendChild(axis);
+    }
+
+    function renderEmployerSection(result, fromLabel, toLabel) {
+      const { common, labelMap } = result;
+      const sec = document.getElementById('employer-section');
+      sec.innerHTML = '';
+      if (!common.length) { sec.classList.remove('visible'); return; }
+
+      sec.classList.add('visible');
+      sec.innerHTML = `<div class="employer-section-title">Employeurs communs</div>`;
+
+      // Global year bounds
+      const now = new Date().getFullYear();
+      const allYears = common.flatMap(c =>
+        [...c.fromPeriods, ...c.toPeriods].flatMap(p => [p.startYear, p.endYear].filter(Boolean)));
+      const gMin = (allYears.length ? Math.min(...allYears) : now - 20) - 2;
+      const gMax = (allYears.length ? Math.max(...allYears) : now) + 2;
+
+      for (const emp of common) {
+        const info = labelMap[emp.employerId] ?? { label: emp.employerId, desc: '' };
+        const realOv = emp.overlaps.filter(o => !o.possible);
+        const possOv = emp.overlaps.filter(o => o.possible);
+
+        let badgeHtml = '';
+        if (realOv.length) {
+          const dated = realOv.filter(o => o.startYear && o.endYear);
+          badgeHtml = dated.length
+            ? `<span class="emp-overlap-badge">⏱ ${dated.map(o => `${o.startYear}–${o.endYear} (${o.endYear - o.startYear} ans)`).join(' · ')}</span>`
+            : `<span class="emp-overlap-badge">⏱ Chevauchement probable</span>`;
+        } else if (possOv.length) {
+          badgeHtml = `<span class="emp-no-overlap-badge">Dates inconnues</span>`;
+        } else {
+          badgeHtml = `<span class="emp-no-overlap-badge">Pas de chevauchement détecté</span>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'emp-card';
+        card.innerHTML = `
+          <div class="emp-header">
+            <span class="emp-qid">${esc(emp.employerId)}</span>
+            <a class="emp-label" href="https://www.wikidata.org/wiki/${emp.employerId}"
+               target="_blank" rel="noopener">${esc(info.label)}</a>
+            ${badgeHtml}
+          </div>
+          <div class="tl-wrap">
+            <div class="tl-names">
+              <div class="tl-name-cell" title="${esc(fromLabel)}">${esc(fromLabel)}</div>
+              <div class="tl-name-cell ov">↕ commun</div>
+              <div class="tl-name-cell" title="${esc(toLabel)}">${esc(toLabel)}</div>
+            </div>
+            <div class="tl-chart" id="tc-${emp.employerId.replace(/\W/g,'')}"></div>
+          </div>
+          <div class="tl-legend">
+            <div class="tl-legend-item"><div class="tl-legend-dot" style="background:rgba(59,130,246,.65)"></div>${esc(fromLabel)}</div>
+            <div class="tl-legend-item"><div class="tl-legend-dot" style="background:rgba(16,185,129,.65)"></div>${esc(toLabel)}</div>
+            <div class="tl-legend-item"><div class="tl-legend-dot" style="background:#fbbf24;border:1px solid #f59e0b"></div>Période commune</div>
+          </div>`;
+        sec.appendChild(card);
+        buildTimeline(card.querySelector(`#tc-${emp.employerId.replace(/\W/g,'')}`), emp, gMin, gMax);
+      }
+    }
+
+    // ── Main search trigger ──────────────────────────────────────────────────
+    findBtn.addEventListener('click', async () => {
+      if (!state.from || !state.to || state.searching) return;
+      state.searching = true;
+      updateFindBtn();
+      initProgress();
+      edgeDir.clear();
+      p737Cache.clear();
+
+      const fromId = state.from.id, toId = state.to.id;
+      const mode   = state.mode ?? 'general';
+      const title  = document.querySelector('.results-title');
+
+      const MODES = {
+        human:   { icon: '👤', msg: `Mode humain — BFS via <b>P737 (influencé par)</b>`,   label: 'Chaînes d\'influence trouvées',  cls: 'results-title-influence' },
+        city:    { icon: '🏙️', msg: `Mode ville — BFS via <b>P190 (jumelage)</b>`,          label: 'Villes relais trouvées',         cls: 'results-title-twin'      },
+        general: { icon: '🔎', msg: `Recherche des connexions (liens wikibase-item)`,        label: 'Items en commun trouvés',        cls: ''                        },
+      };
+      const { icon, msg, label, cls } = MODES[mode];
+      log(`${icon} ${msg} entre <b>${fromId}</b> et <b>${toId}</b>…`);
+      title.textContent = label;
+      title.className   = 'results-title' + (cls ? ` ${cls}` : '');
+
+      try {
+        if (mode === 'human') {
+          const { found, labelMap, fromVisited, toVisited, allVisited, graphEdges } =
+            await findInfluenceConnection(fromId, toId);
+          if (!found.length) {
+            log('⚠️ Aucune chaîne d\'influence trouvée.', 'log-warn');
+          } else {
+            log(`✔ ${found.length} chaîne(s) trouvée(s).`, 'log-found');
+            resultsSec.classList.add('visible');
+            const display = found.slice(0, 3);
+            for (const item of display) renderInfluenceResult(item, labelMap, fromId, toId);
+            if (found.length > 3) {
+              const note = document.createElement('div');
+              note.className = 'more-note';
+              note.textContent = `… et ${found.length - 3} autre(s) chaîne(s) visible(s) dans le réseau ci-dessous.`;
+              resultsBody.appendChild(note);
+            }
+          }
+          renderInfluenceNetwork(allVisited, graphEdges, labelMap, fromVisited, toVisited, fromId, toId);
+          const empResult = await findCommonEmployers(fromId, toId);
+          renderEmployerSection(empResult, state.from.label || fromId, state.to.label || toId);
+        } else if (mode === 'city') {
+          const { found, labelMap } = await findTwinCityConnection(fromId, toId);
+          if (!found.length) {
+            log('⚠️ Aucune ville relais trouvée dans les niveaux explorés.', 'log-warn');
+          } else {
+            log(`✔ ${found.length} ville(s) relais trouvée(s).`, 'log-found');
+            resultsSec.classList.add('visible');
+            for (const item of found) renderTwinCityResult(item, labelMap, fromId, toId);
+          }
+        } else {
+          const { found, labelMap } = await findCommonLinks(fromId, toId);
+          if (!found.length) {
+            log('⚠️ Aucun item en commun trouvé.', 'log-warn');
+          } else {
+            log(`✔ ${found.length} item(s) en commun trouvé(s).`, 'log-found');
+            resultsSec.classList.add('visible');
+            for (const item of found) renderResult(item, labelMap, fromId, toId);
+          }
+        }
+      } catch (err) {
+        log('❌ Erreur : ' + err.message, 'log-warn');
+        console.error(err);
+      } finally {
+        stopProgress();
+        state.searching = false;
+        updateFindBtn();
+      }
+    });
+
+    // ── Utility ──────────────────────────────────────────────────────────────
+    function esc(s = '') {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
