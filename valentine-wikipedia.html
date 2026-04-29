@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💝 Carte de Saint-Valentin Wikipédia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&family=Lato:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lato', sans-serif;
+      background: radial-gradient(ellipse at top, #3d0020 0%, #1a000d 60%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+      color: #fff;
+    }
+
+    h1 {
+      font-family: 'Dancing Script', cursive;
+      font-size: 2.6rem;
+      color: #ff8fb3;
+      text-align: center;
+      margin-bottom: 0.3rem;
+      text-shadow: 0 0 20px rgba(255, 100, 150, 0.5);
+    }
+
+    .subtitle {
+      color: #cc6688;
+      font-size: 0.85rem;
+      font-weight: 300;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    /* ── FORM ── */
+    .form-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 120, 160, 0.3);
+      border-radius: 18px;
+      padding: 2rem 2.2rem;
+      width: 100%;
+      max-width: 460px;
+      margin-bottom: 2.5rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .field-group {
+      position: relative;
+      margin-bottom: 1.4rem;
+    }
+
+    label {
+      display: block;
+      color: #ff8fb3;
+      font-size: 0.82rem;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      border: 1.5px solid rgba(255, 120, 160, 0.4);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 1rem;
+      font-family: 'Lato', sans-serif;
+      transition: border-color 0.2s, background 0.2s;
+      outline: none;
+    }
+
+    input[type="text"]::placeholder { color: rgba(255,255,255,0.35); }
+
+    input[type="text"]:focus {
+      border-color: #ff6b9d;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    input[type="text"]:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    input[type="text"].selected {
+      border-color: #ff6b9d;
+      color: #ffccdd;
+    }
+
+    .field-hint {
+      font-size: 0.75rem;
+      color: rgba(255,180,200,0.55);
+      margin-top: 0.3rem;
+      font-style: italic;
+    }
+
+    /* autocomplete dropdown */
+    .ac-list {
+      position: absolute;
+      top: calc(100% - 0.4rem);
+      left: 0; right: 0;
+      background: #2d0015;
+      border: 1px solid rgba(255,100,150,0.5);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      z-index: 200;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .ac-item {
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      font-size: 0.92rem;
+      color: #ffccdd;
+      transition: background 0.15s;
+    }
+
+    .ac-item:hover, .ac-item.highlighted { background: rgba(255, 107, 157, 0.25); }
+
+    /* generate button */
+    .btn-generate {
+      width: 100%;
+      padding: 0.8rem;
+      background: linear-gradient(135deg, #e8336a, #c0185a);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-family: 'Dancing Script', cursive;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(200, 24, 90, 0.4);
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(200, 24, 90, 0.6);
+    }
+
+    .btn-generate:active { transform: translateY(0); }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── LOADING ── */
+    .loading-msg {
+      text-align: center;
+      color: #ff8fb3;
+      font-family: 'Dancing Script', cursive;
+      font-size: 1.4rem;
+      padding: 2.5rem 1rem;
+    }
+
+    .loading-msg small {
+      display: block;
+      font-family: 'Lato', sans-serif;
+      font-size: 0.78rem;
+      color: #cc6688;
+      margin-top: 0.5rem;
+      font-weight: 300;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 28px; height: 28px;
+      border: 3px solid rgba(255,140,180,0.2);
+      border-top-color: #ff6b9d;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.6rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── VALENTINE CARD ── */
+    .card-wrap {
+      width: 100%;
+      max-width: 580px;
+      display: none;
+    }
+
+    .valentine-card {
+      position: relative;
+      background: linear-gradient(150deg, #fff5f8, #ffe8ef, #fff0f5);
+      border-radius: 20px;
+      padding: 2.5rem 2rem 5.5rem;
+      box-shadow:
+        0 0 0 1px rgba(220,80,120,0.2),
+        0 8px 40px rgba(180,0,60,0.25),
+        0 0 80px rgba(255,100,150,0.08);
+      overflow: hidden;
+      color: #4a0020;
+    }
+
+    /* watermark hearts */
+    .card-watermark {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      opacity: 0.07;
+      font-size: 6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      line-height: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.6rem;
+    }
+
+    .card-hearts-deco {
+      font-size: 1.8rem;
+      letter-spacing: 0.2em;
+    }
+
+    .card-date {
+      font-size: 0.72rem;
+      color: #aa4466;
+      font-style: italic;
+    }
+
+    .card-recipient, .card-sender {
+      font-family: 'Dancing Script', cursive;
+      font-size: 1.35rem;
+      color: #880033;
+      margin: 0.3rem 0;
+    }
+
+    .card-recipient span, .card-sender span {
+      color: #cc1155;
+      font-weight: 700;
+    }
+
+    .card-divider {
+      border: none;
+      border-top: 1px dashed rgba(200,60,100,0.3);
+      margin: 1rem 0;
+    }
+
+    .card-poem {
+      font-family: 'Dancing Script', cursive;
+      font-size: 1.18rem;
+      line-height: 2;
+      color: #5a0028;
+      padding: 0.3rem 0.5rem 0.3rem 1.2rem;
+      border-left: 3px solid rgba(220, 80, 120, 0.35);
+      min-height: 4rem;
+    }
+
+    .card-poem p {
+      margin: 0;
+      transition: opacity 0.3s;
+    }
+
+    /* image corner */
+    .card-image {
+      position: absolute;
+      bottom: 18px;
+      right: 18px;
+      width: 110px;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid rgba(220,80,120,0.4);
+      box-shadow: 0 4px 15px rgba(180,0,60,0.2);
+    }
+
+    /* error card */
+    .card-error-text {
+      text-align: center;
+      font-family: 'Dancing Script', cursive;
+      font-size: 4rem;
+      color: #cc1155;
+      padding: 3rem 0;
+      opacity: 0.7;
+      letter-spacing: 0.1em;
+    }
+
+    /* path info (small) */
+    .card-path-info {
+      margin-top: 1.2rem;
+      font-size: 0.7rem;
+      color: rgba(100,0,40,0.5);
+      font-style: italic;
+      text-align: right;
+      padding-right: 130px;
+    }
+
+    /* lang selector */
+    .lang-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.4rem;
+      font-size: 0.82rem;
+      color: #cc6688;
+    }
+
+    .lang-wrap select {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,120,160,0.35);
+      border-radius: 7px;
+      color: #ffccdd;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .lang-wrap select option { background: #2d0015; }
+  </style>
+</head>
+<body>
+
+<h1>💝 Carte de Saint-Valentin</h1>
+<p class="subtitle">Reliez deux articles Wikipédia par une chaîne d'amour</p>
+
+<div class="lang-wrap">
+  <span>Langue :</span>
+  <select id="langSelect">
+    <option value="fr">Français</option>
+    <option value="en">English</option>
+    <option value="es">Español</option>
+    <option value="de">Deutsch</option>
+    <option value="it">Italiano</option>
+    <option value="pt">Português</option>
+  </select>
+</div>
+
+<div class="form-card">
+  <div class="field-group" id="toGroup">
+    <label>À (To) ✉</label>
+    <input type="text" id="toField" placeholder="Rechercher un article Wikipédia…" autocomplete="off">
+    <div class="ac-list" id="toList"></div>
+    <p class="field-hint">Commencez à taper pour chercher sur Wikipédia</p>
+  </div>
+
+  <div class="field-group" id="fromGroup">
+    <label>De (From) 💌</label>
+    <input type="text" id="fromField" placeholder="Sélectionnez d'abord le destinataire…" autocomplete="off" disabled>
+    <div class="ac-list" id="fromList"></div>
+    <p class="field-hint" id="fromHint">Activé après avoir choisi le destinataire</p>
+  </div>
+
+  <button class="btn-generate" id="btnGenerate" onclick="generateCard()">
+    💝 Générer la carte d'amour
+  </button>
+</div>
+
+<div class="card-wrap" id="cardWrap">
+  <div class="valentine-card" id="valentineCard"></div>
+</div>
+
+<script>
+/* ──────────────────────────────────────────────
+   CONFIG
+────────────────────────────────────────────── */
+const MAX_DEPTH    = 5;   // max BFS depth (max path length = MAX_DEPTH + 1 articles)
+const MAX_FRONTIER = 60;  // articles to expand per BFS level
+const BATCH_SIZE   = 8;   // articles per Wikipedia API call
+
+let toArticle   = null;  // confirmed "To" title
+let fromArticle = null;  // confirmed "From" title
+let currentLang = 'fr';
+
+const langSelect = document.getElementById('langSelect');
+langSelect.addEventListener('change', () => {
+  currentLang = langSelect.value;
+  resetForm();
+});
+
+function apiBase() {
+  return `https://${currentLang}.wikipedia.org/w/api.php`;
+}
+
+/* ──────────────────────────────────────────────
+   WIKIPEDIA API HELPERS
+────────────────────────────────────────────── */
+async function searchWikipedia(query) {
+  const url = `${apiBase()}?action=opensearch&search=${encodeURIComponent(query)}&limit=8&namespace=0&format=json&origin=*`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d[1] || [];
+}
+
+async function getFirstWords(title) {
+  const url = `${apiBase()}?action=query&titles=${encodeURIComponent(title)}&prop=extracts&exintro=true&explaintext=true&exchars=300&format=json&origin=*`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const page = Object.values(d.query.pages)[0];
+  if (!page || !page.extract) return title;
+  const words = page.extract
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(w => w.length > 0);
+  return words.slice(0, 5).join(' ');
+}
+
+async function getLinksForArticles(titles) {
+  const result = {};
+  const joined = titles.map(encodeURIComponent).join('|');
+  const url = `${apiBase()}?action=query&titles=${joined}&prop=links&pllimit=500&plnamespace=0&format=json&origin=*`;
+  const r = await fetch(url);
+  const d = await r.json();
+  for (const page of Object.values(d.query.pages)) {
+    if (page.title) {
+      result[page.title] = (page.links || []).map(l => l.title);
+    }
+  }
+  return result;
+}
+
+async function getImage(title) {
+  const url = `${apiBase()}?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=300&format=json&origin=*`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const page = Object.values(d.query.pages)[0];
+  return page?.thumbnail?.source || null;
+}
+
+async function getRandomImageFromPath(path) {
+  const shuffled = [...path].sort(() => Math.random() - 0.5);
+  for (const title of shuffled) {
+    const img = await getImage(title);
+    if (img) return { src: img, title };
+  }
+  return null;
+}
+
+/* ──────────────────────────────────────────────
+   BFS PATH FINDER
+────────────────────────────────────────────── */
+function norm(t) {
+  return t.toLowerCase().replace(/_/g, ' ').trim();
+}
+
+async function findPath(fromTitle, toTitle) {
+  const normalTo = norm(toTitle);
+
+  if (norm(fromTitle) === normalTo) return [fromTitle];
+
+  // Map: normalized title → full path to reach it
+  const visited = new Map();
+  visited.set(norm(fromTitle), [fromTitle]);
+  let frontier = [fromTitle];
+
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    if (frontier.length === 0) break;
+
+    const current = frontier.slice(0, MAX_FRONTIER);
+    const newFrontier = [];
+
+    for (let i = 0; i < current.length; i += BATCH_SIZE) {
+      const batch = current.slice(i, i + BATCH_SIZE);
+      let linksMap;
+      try {
+        linksMap = await getLinksForArticles(batch);
+      } catch (e) {
+        console.warn('Links fetch error', e);
+        continue;
+      }
+
+      for (const [article, links] of Object.entries(linksMap)) {
+        const pathToHere = visited.get(norm(article));
+        if (!pathToHere) continue;
+
+        for (const link of links) {
+          if (norm(link) === normalTo) {
+            return [...pathToHere, link]; // ✓ found
+          }
+          if (!visited.has(norm(link))) {
+            const newPath = [...pathToHere, link];
+            visited.set(norm(link), newPath);
+            newFrontier.push(link);
+          }
+        }
+      }
+    }
+
+    frontier = newFrontier.slice(0, MAX_FRONTIER * 3);
+  }
+
+  return null; // not found
+}
+
+/* ──────────────────────────────────────────────
+   AUTOCOMPLETE
+────────────────────────────────────────────── */
+function setupAutocomplete(inputId, listId, onSelect) {
+  const input = document.getElementById(inputId);
+  const list  = document.getElementById(listId);
+  let timer;
+  let hiIdx = -1;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    hiIdx = -1;
+    const q = input.value.trim();
+    if (q.length < 2) { hideList(list); return; }
+    timer = setTimeout(() => fetchAndRender(q, list, input, onSelect), 280);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = list.querySelectorAll('.ac-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      hiIdx = Math.min(hiIdx + 1, items.length - 1);
+      highlight(items, hiIdx);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      hiIdx = Math.max(hiIdx - 1, 0);
+      highlight(items, hiIdx);
+    } else if (e.key === 'Enter' && hiIdx >= 0) {
+      e.preventDefault();
+      items[hiIdx].click();
+    } else if (e.key === 'Escape') {
+      hideList(list);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !list.contains(e.target)) hideList(list);
+  });
+}
+
+function highlight(items, idx) {
+  items.forEach((el, i) => el.classList.toggle('highlighted', i === idx));
+}
+
+function hideList(list) {
+  list.style.display = 'none';
+  list.innerHTML = '';
+}
+
+async function fetchAndRender(query, list, input, onSelect) {
+  let results;
+  try { results = await searchWikipedia(query); }
+  catch (e) { console.warn('Search error', e); return; }
+
+  if (!results.length) { hideList(list); return; }
+
+  list.innerHTML = '';
+  results.forEach(title => {
+    const item = document.createElement('div');
+    item.className = 'ac-item';
+    item.textContent = title;
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      input.value = title;
+      input.classList.add('selected');
+      hideList(list);
+      onSelect(title);
+    });
+    list.appendChild(item);
+  });
+  list.style.display = 'block';
+}
+
+/* ──────────────────────────────────────────────
+   FORM LOGIC
+────────────────────────────────────────────── */
+setupAutocomplete('toField', 'toList', (title) => {
+  toArticle   = title;
+  fromArticle = null;
+
+  const fromField = document.getElementById('fromField');
+  fromField.disabled = false;
+  fromField.value = '';
+  fromField.classList.remove('selected');
+  fromField.placeholder = 'Rechercher un expéditeur…';
+
+  document.getElementById('fromHint').textContent =
+    `Doit être accessible depuis « ${title} » en ≤ 8 liens Wikipedia`;
+});
+
+setupAutocomplete('fromField', 'fromList', (title) => {
+  fromArticle = title;
+});
+
+function resetForm() {
+  toArticle = fromArticle = null;
+  ['toField','fromField'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('selected');
+  });
+  document.getElementById('fromField').disabled = true;
+  document.getElementById('fromField').placeholder = 'Sélectionnez d\'abord le destinataire…';
+  document.getElementById('fromHint').textContent = 'Activé après avoir choisi le destinataire';
+  document.getElementById('cardWrap').style.display = 'none';
+}
+
+/* ──────────────────────────────────────────────
+   CARD GENERATOR
+────────────────────────────────────────────── */
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function formatDate() {
+  return new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function heartWatermark() {
+  return Array(60).fill('♥').join(' ');
+}
+
+async function generateCard() {
+  const toVal   = (document.getElementById('toField').value || '').trim();
+  const fromVal = (document.getElementById('fromField').value || '').trim();
+
+  if (!toVal || !fromVal) {
+    alert('Veuillez remplir les deux champs.');
+    return;
+  }
+
+  const toArt   = toArticle   || toVal;
+  const fromArt = fromArticle || fromVal;
+
+  const cardWrap = document.getElementById('cardWrap');
+  const card     = document.getElementById('valentineCard');
+  const btn      = document.getElementById('btnGenerate');
+
+  cardWrap.style.display = 'block';
+  btn.disabled = true;
+  card.innerHTML = `
+    <div class="loading-msg">
+      <div class="spinner"></div><br>
+      💝 Génération de votre carte d'amour…
+      <small>Recherche du chemin entre les articles Wikipédia…</small>
+    </div>`;
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const path = await findPath(fromArt, toArt);
+
+    if (!path || path.length > 9) {
+      renderError(card, toArt, fromArt);
+      return;
+    }
+
+    // Poem: first 5 words of each article in path (max 8 lines)
+    const poemArticles = path.slice(0, 8);
+    const lines = await Promise.all(poemArticles.map(getFirstWords));
+
+    // Random image from path
+    const imgResult = await getRandomImageFromPath(path);
+
+    renderCard(card, toArt, fromArt, lines, path, imgResult);
+
+  } catch (err) {
+    console.error('Generation error:', err);
+    renderError(card, toArt, fromArt);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderCard(card, toArt, fromArt, lines, path, imgResult) {
+  const poemHtml = lines.map(l => `<p>${escHtml(l)}</p>`).join('\n');
+  const imgHtml  = imgResult
+    ? `<img class="card-image" src="${escHtml(imgResult.src)}" alt="${escHtml(imgResult.title)}" title="${escHtml(imgResult.title)}">`
+    : '';
+  const pathStr  = path.join(' → ');
+
+  card.innerHTML = `
+    <div class="card-watermark" aria-hidden="true">${heartWatermark()}</div>
+
+    <div class="card-header">
+      <div class="card-hearts-deco">💝 ♥ 💕</div>
+      <div class="card-date">${formatDate()}</div>
+    </div>
+
+    <div class="card-recipient">À : <span>${escHtml(toArt)}</span></div>
+
+    <hr class="card-divider">
+
+    <div class="card-poem">${poemHtml}</div>
+
+    <hr class="card-divider">
+
+    <div class="card-sender">De : <span>${escHtml(fromArt)}</span></div>
+
+    ${imgHtml}
+
+    <div class="card-path-info">Chemin : ${escHtml(pathStr)}</div>
+  `;
+}
+
+function renderError(card, toArt, fromArt) {
+  card.innerHTML = `
+    <div class="card-watermark" aria-hidden="true">${heartWatermark()}</div>
+    <div class="card-header">
+      <div class="card-hearts-deco">💔</div>
+      <div class="card-date">${formatDate()}</div>
+    </div>
+    <div class="card-recipient">À : <span>${escHtml(toArt)}</span></div>
+    <hr class="card-divider">
+    <div class="card-error-text">raté</div>
+    <hr class="card-divider">
+    <div class="card-sender">De : <span>${escHtml(fromArt)}</span></div>
+    <div class="card-path-info">Aucun chemin trouvé en ≤ ${MAX_DEPTH} liens.</div>
+  `;
+}
+</script>
+</body>
+</html>
