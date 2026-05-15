@@ -1,0 +1,574 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ruge+Boogie&display=swap" rel="stylesheet">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+.ruge-boogie-regular {
+  font-family: "Ruge Boogie", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+ body, .root {
+    background-image: url('https://images.meme-arsenal.com/d6b38c66af3ca0c37a240232a0b896c1.jpg');
+    background-size: 500px;
+    font-family: 'Times New Roman', Times, serif
+    color: var(--color-text-primary);
+  }
+
+  .container {
+    background-color: white;
+    max-width: 680px;
+    margin: 80 auto;
+    padding: 50;
+    box-shadow: 0 0 20 red;
+  }
+
+  .title-block {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .title-block h1 {
+    font-family: "Ruge Boogie", cursive;
+    font-size: 100;
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    color:blue;
+  }
+
+  .title-block p {
+    margin-top: 0.5rem;
+    font-size: 20;
+    margin: 40;
+    color:blue;
+  }
+
+  .form-card {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .field-group {
+    margin-bottom: 1.4rem;
+    position: relative;
+  }
+
+  .field-group label {
+    display: block;
+    font-family: 'Times New Roman', Times, serif;
+    color: red;
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .field-group input {
+    width: 100%;
+    font-family: 'Times New Roman', Times, serif;
+    color: blue;
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-color: red;
+    box-shadow: 0 0 15px red;
+  }
+
+  .field-group input:focus {
+    border-color: var(--color-border-primary);
+    box-shadow: 0 0 0 1px red;
+  }
+
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+
+  .autocomplete-item {
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.97rem;
+    color: var(--color-text-primary);
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    transition: background 0.1s;
+  }
+
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-item.highlighted {
+    background: var(--color-background-secondary);
+  }
+
+  .autocomplete-item.disabled {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+    cursor: default;
+  }
+
+  .hint {
+    font-family: 'Times New Roman', Times, serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: red;
+    margin-top: 0.3rem;
+    font-style: italic;
+  }
+
+  .generate-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-family:  "Ruge Boogie", cursive;
+    color: white;
+    font-size: 30;
+    font-weight: 400;
+    background: red;
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.03em;
+  }
+
+  .generate-btn:hover { background: red}
+  .generate-btn:active { transform: scale(0.99); }
+  .generate-btn:disabled { cursor: not-allowed; }
+
+  .status-msg {
+    text-align: center;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    min-height: 1.4rem;
+    margin-bottom: 1rem;
+  }
+
+  /* CARD */
+  .card-wrapper {
+    display: none;
+    margin-top: 2rem;
+  }
+
+  .valentine-card {
+    background: #FF00FF;
+    border-radius: 2px;
+    padding: 2.5rem 2.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 320px;
+  }
+
+  .card-decoration {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #c97050 0%, #e8a878 50%, #c97050 100%);
+  }
+
+  .card-to {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 1.1rem;
+     font-weight: 700;
+    color: #00FF00;
+    margin-bottom: 0.15rem;
+  }
+
+  .card-to span {
+    font-family: 'Times New Roman', Times, serif
+    color: #00FF00;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .poem {
+    margin: 1.4rem 0 1.6rem;
+    padding: 1rem 0;
+  }
+
+  .poem-line {
+    font-family: "Ruge Boogie", cursive;
+    color: white;
+    font-size: 40;
+    line-height: 1.8;
+  }
+
+  .poem-line a {
+    text-decoration: none;
+    color: white;
+  }
+
+  .poem-line a:hover { color: pink; }
+
+  .card-from {
+   font-family: 'Times New Roman', Times, serif;
+    font-size: 1.1rem;
+     font-weight: 700;
+    color: #00FF00;
+  }
+
+  .card-from span {
+      font-family: 'Times New Roman', Times, serif
+    color: #00FF00;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .card-image {
+    position: relative;
+    bottom: 30px;
+    left: 300px;
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 10 greenyellow;
+  }
+
+  .error-card {
+    background: #fff8f0;
+    border: 1px solid #e8c8b0;
+    border-radius: 2px;
+    padding: 2.5rem 2.5rem 2rem;
+    text-align: center;
+  }
+
+  .error-card .error-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-style: italic;
+    color: #8a3010;
+    margin-bottom: 0.75rem;
+  }
+
+  .error-card .error-msg {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.05rem;
+    color: #6a4030;
+    font-style: italic;
+    line-height: 1.7;
+  }
+
+  .chain-info {
+    margin-top: 1rem;
+    font-size: 0.83rem;
+    color: blue;
+    font-style: italic;
+    text-align: center;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .valentine-card, .error-card {
+      background: #2a1a10;
+      border-color: #6a3a20;
+    }
+    .card-to, .card-from { color: #c89070; }
+    .card-to span, .card-from span { color: #f0c090; }
+    .poem { border-color: #6a3a20; }
+    .poem-line { color: #e0c0a0; }
+    .poem-line a { color: #e08050; border-bottom-color: #a05030; }
+    .poem-line a:hover { color: #f0a070; }
+    .error-card .error-title { color: #f09060; }
+    .error-card .error-msg { color: #c09070; }
+    .card-image { border-color: #6a3a20; }
+  }
+</style>
+
+<div class="container">
+  <div class="title-block">
+    <h1>Wiki my Pedia</h1>
+    <p>Connect two Wikipedia articles with a chain of love</p>
+  </div>
+
+  <div class="form-card">
+    <div class="field-group" id="to-group">
+      <label for="to-input">To:</label>
+      <input type="text" id="to-input" placeholder="Search a Wikipedia article..." autocomplete="off" />
+      <div class="hint">Start typing to search Wikipedia articles</div>
+      <div class="autocomplete-list" id="to-list" style="display:none;"></div>
+    </div>
+
+    <div class="field-group" id="from-group">
+      <label for="from-input">From:</label>
+      <input type="text" id="from-input" placeholder="First select a recipient…" autocomplete="off" disabled />
+      <div class="hint" id="from-hint">Will search articles linked within 8 hops from "To"</div>
+      <div class="autocomplete-list" id="from-list" style="display:none;"></div>
+    </div>
+
+    <button class="generate-btn" id="gen-btn" disabled>Write a romantic poem ♥</button>
+  </div>
+
+  <div class="status-msg" id="status"></div>
+  <div class="card-wrapper" id="card-wrapper"></div>
+</div>
+
+<script>
+const WIKI = 'https://en.wikipedia.org/w/api.php?origin=*';
+
+let toArticle = null;
+let fromArticle = null;
+let chainCache = null;
+
+async function searchWiki(q) {
+  const url = `${WIKI}&action=opensearch&format=json&limit=8&search=${encodeURIComponent(q)}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d[1] || [];
+}
+
+async function getLinks(title) {
+  const url = `${WIKI}&action=query&format=json&prop=links&pllimit=500&titles=${encodeURIComponent(title)}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const pages = d.query.pages;
+  const page = Object.values(pages)[0];
+  return (page.links || []).map(l => l.title);
+}
+
+async function getFirstWords(title) {
+  const url = `${WIKI}&action=query&format=json&prop=extracts&exsentences=2&explaintext=true&titles=${encodeURIComponent(title)}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const page = Object.values(d.query.pages)[0];
+  const text = page.extract || '';
+  const words = text.replace(/\s+/g,' ').trim().split(' ').slice(0,5);
+  return words.join(' ');
+}
+
+async function getImages(titles) {
+  const url = `${WIKI}&action=query&format=json&prop=pageimages&piprop=thumbnail&pithumbsize=200&titles=${encodeURIComponent(titles.join('|'))}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  const pages = Object.values(d.query.pages);
+  const imgs = pages.filter(p => p.thumbnail).map(p => p.thumbnail.source);
+  return imgs;
+}
+
+function setupAutocomplete(inputEl, listEl, onSelect, getSuggestions) {
+  let current = -1;
+  let timer = null;
+
+  inputEl.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = inputEl.value.trim();
+    if (q.length < 2) { listEl.style.display = 'none'; return; }
+    timer = setTimeout(async () => {
+      const results = await getSuggestions(q);
+      showList(results);
+    }, 300);
+  });
+
+  function showList(items) {
+    listEl.innerHTML = '';
+    current = -1;
+    if (!items.length) { listEl.style.display = 'none'; return; }
+    items.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'autocomplete-item';
+      div.textContent = item;
+      div.addEventListener('mousedown', (e) => { e.preventDefault(); select(item); });
+      listEl.appendChild(div);
+    });
+    listEl.style.display = 'block';
+  }
+
+  inputEl.addEventListener('keydown', (e) => {
+    const items = listEl.querySelectorAll('.autocomplete-item:not(.disabled)');
+    if (e.key === 'ArrowDown') { current = Math.min(current+1, items.length-1); highlight(items); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { current = Math.max(current-1, 0); highlight(items); e.preventDefault(); }
+    else if (e.key === 'Enter' && current >= 0) { select(items[current].textContent); e.preventDefault(); }
+    else if (e.key === 'Escape') { listEl.style.display = 'none'; }
+  });
+
+  function highlight(items) {
+    items.forEach((el, i) => el.classList.toggle('highlighted', i === current));
+    if (items[current]) items[current].scrollIntoView({block:'nearest'});
+  }
+
+  function select(val) {
+    inputEl.value = val;
+    listEl.style.display = 'none';
+    onSelect(val);
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!inputEl.contains(e.target) && !listEl.contains(e.target)) listEl.style.display = 'none';
+  });
+}
+
+setupAutocomplete(
+  document.getElementById('to-input'),
+  document.getElementById('to-list'),
+  (val) => {
+    toArticle = val;
+    fromArticle = null;
+    chainCache = null;
+    document.getElementById('from-input').value = '';
+    document.getElementById('from-input').disabled = false;
+    document.getElementById('from-hint').textContent = `Searching articles reachable from "${val}" (up to 8 hops)`;
+    document.getElementById('gen-btn').disabled = true;
+    document.getElementById('card-wrapper').style.display = 'none';
+  },
+  searchWiki
+);
+
+setupAutocomplete(
+  document.getElementById('from-input'),
+  document.getElementById('from-list'),
+  (val) => {
+    fromArticle = val;
+    document.getElementById('gen-btn').disabled = false;
+  },
+  async (q) => {
+    if (!toArticle) return searchWiki(q);
+    const basic = await searchWiki(q);
+    return basic;
+  }
+);
+
+document.getElementById('gen-btn').addEventListener('click', generateCard);
+
+async function bfsChain(from, to, maxDepth = 8) {
+  if (from === to) return [from];
+  const visited = new Map();
+  visited.set(from, null);
+  const queue = [from];
+  let depth = 0;
+  while (queue.length && depth < maxDepth) {
+    const levelSize = queue.length;
+    depth++;
+    const batch = queue.splice(0, levelSize);
+    for (const node of batch) {
+      let links;
+      try { links = await getLinks(node); } catch(e) { links = []; }
+      for (const link of links) {
+        if (!visited.has(link)) {
+          visited.set(link, node);
+          if (link === to) {
+            const path = [to];
+            let cur = to;
+            while (visited.get(cur) !== null) { cur = visited.get(cur); path.unshift(cur); }
+            return path;
+          }
+          queue.push(link);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function generateCard() {
+  const btn = document.getElementById('gen-btn');
+  const status = document.getElementById('status');
+  const wrapper = document.getElementById('card-wrapper');
+
+  if (!toArticle || !fromArticle) {
+    showError(wrapper); return;
+  }
+
+  btn.disabled = true;
+  wrapper.style.display = 'none';
+  status.textContent = 'Tracing the path through Wikipedia…';
+
+  try {
+    let chain;
+    const toNorm = toArticle.trim();
+    const fromNorm = fromArticle.trim();
+
+    if (toNorm === fromNorm) {
+      chain = [toNorm];
+    } else {
+      status.textContent = 'Following hyperlinks (this may take a moment)…';
+      chain = await bfsChain(fromNorm, toNorm, 8);
+    }
+
+    if (!chain) {
+      status.textContent = '';
+      showError(wrapper);
+      btn.disabled = false;
+      return;
+    }
+
+    status.textContent = 'Gathering words from each article…';
+    const poemLines = [];
+    const articlesToUse = chain.slice(0, 8);
+
+    for (const art of articlesToUse) {
+      try {
+        const words = await getFirstWords(art);
+        poemLines.push({ text: words, title: art });
+      } catch(e) {
+        poemLines.push({ text: art.split(' ').slice(0,5).join(' '), title: art });
+      }
+    }
+
+    status.textContent = 'Finding an image…';
+    const imgs = await getImages(articlesToUse);
+    const img = imgs.length ? imgs[Math.floor(Math.random() * imgs.length)] : null;
+
+    status.textContent = '';
+    showCard(wrapper, toNorm, fromNorm, poemLines, img, chain);
+
+  } catch(e) {
+    status.textContent = '';
+    showError(wrapper);
+  }
+
+  btn.disabled = false;
+}
+
+function showCard(wrapper, to, from, lines, imgSrc, chain) {
+  const poemHTML = lines.map(l =>
+    `<div class="poem-line"><a href="https://en.wikipedia.org/wiki/${encodeURIComponent(l.title)}" target="_blank" rel="noopener">${escHtml(l.text)}</a></div>`
+  ).join('');
+
+  const imgTag = imgSrc
+    ? `<img class="card-image" src="${escHtml(imgSrc)}" alt="Wikipedia image" />`
+    : '';
+
+  const chainText = chain.length > 1
+    ? `Path: ${chain.map(t => `<em>${escHtml(t)}</em>`).join(' → ')}`
+    : `Direct article`;
+
+  wrapper.innerHTML = `
+    <div class="valentine-card">
+      <div class="poem">${poemHTML}</div>
+      <div class="card-to">To: <span>${escHtml(to)}</span></div>
+      <div class="card-from">From: <span>${escHtml(from)}</span></div>
+      ${imgTag}
+    </div>
+    <div class="chain-info">${chainText}</div>
+  `;
+  wrapper.style.display = 'block';
+}
+
+function showError(wrapper) {
+  wrapper.innerHTML = `
+    <div class="error-card">
+      <div class="error-title">No valentine's day card for you :_)</div>
+      <div class="error-msg">
+        Select one of the proposed article titles from the list, and try again!
+      </div>
+    </div>
+  `;
+  wrapper.style.display = 'block';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
